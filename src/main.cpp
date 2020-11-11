@@ -16,6 +16,7 @@ DustSensorData dustSensorData;
 struct tm timeinfo;
 
 bool touchProcessed = false;
+int touchDetectionCounter = 0;
 bool measuring = false;
 int touchThreshold = 28;
 int lastLogSec = -1;
@@ -79,6 +80,7 @@ void setup()
 
     if (!isMaster())
         commandCallback = &handleCommand;
+
 }
 
 void printLocalTime()
@@ -112,7 +114,14 @@ bool processTouchPin()
 {
     auto touch_sensor_value = touchRead(PIN_TOUCH_1);
     bool touch_detected = touch_sensor_value < touchThreshold;
-    if (touch_detected && !touchProcessed)
+
+    if (touch_detected)
+        touchDetectionCounter++;
+    else
+        touchDetectionCounter = 0;
+    
+
+    if (touchDetectionCounter > 1 && !touchProcessed)
     {
         touchProcessed = true;
         return true;
