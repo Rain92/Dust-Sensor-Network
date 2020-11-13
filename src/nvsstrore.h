@@ -7,7 +7,9 @@
 #define MAGICKEY_FLASHKEY "magickey"
 #define SETTINGS_FLASHKEY "settings"
 
-#define SENSOR_ID_DEFAULT 0
+#define SENSOR_ID_DEFAULT 5
+
+#define SENSOR_ID_OVERRIDE 1
 
 struct Settings
 {
@@ -21,7 +23,7 @@ void saveSettings()
     Serial.println("Saving settings.");
 
     bool res1 = NVS.setInt(MAGICKEY_FLASHKEY, MAGICKEY);
-    bool res2 = NVS.setBlob(SETTINGS_FLASHKEY, (uint8_t*)&settings, sizeof(Settings));
+    bool res2 = NVS.setBlob(SETTINGS_FLASHKEY, (uint8_t *)&settings, sizeof(Settings));
 
     if (!res1 || !res2)
         Serial.println("Couldn't save settings.");
@@ -41,8 +43,14 @@ void initNvs()
     }
     else
     {
-        bool res = NVS.getBlob(SETTINGS_FLASHKEY, (uint8_t*)&settings, sizeof(Settings));
+        bool res = NVS.getBlob(SETTINGS_FLASHKEY, (uint8_t *)&settings, sizeof(Settings));
         if (!res)
             Serial.println("Couldn't load settings.");
+
+        if (SENSOR_ID_OVERRIDE > 0)
+        {
+            settings.sensorId = SENSOR_ID_DEFAULT;
+            saveSettings();
+        }
     }
 }

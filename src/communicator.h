@@ -7,6 +7,7 @@
 
 uint8_t broadcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
+//D8:A0:1D:61:21:B0
 uint8_t masterAddress[] = {0xD8, 0xA0, 0x1D, 0x60, 0xD1, 0x3C};
 
 esp_now_peer_info_t peerInfo;
@@ -71,9 +72,36 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
 
     DataPacket *recieved = (DataPacket *)incomingData;
 
-    Serial.printf("pm2.5: %.1f pm10: %.1f\n", recieved->data.pm2_5, recieved->data.pm10);
+    // Serial.printf("pm2.5: %.1f pm10: %.1f\n", recieved->data.pm2_5, recieved->data.pm10);
 
     registerSensorData(recieved->sensor, recieved->data);
+}
+
+void updateMaster(const uint8_t *mac)
+{
+    bool changed = false;
+
+    for (int i = 0; i < 6; i++)
+    {
+        if (masterAddress[i] != mac[i])
+        {
+            changed = true;
+            break;
+        }
+    }
+
+    if (changed)
+    {
+        esp_now_del_peer(masterAddress);
+
+        memcpy(masterAddress, mac, 6);
+        memcpy(peerInfo.peer_addr, masterAddress, 6);
+        if (esp_now_add_peer(&peerInfo) != ESP_OK)
+        {
+            Serial.println("Failed to add peer");
+            return;
+        }
+    }
 }
 
 void OnCommandRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
@@ -97,6 +125,8 @@ void OnCommandRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
     RemoteCommand *command = (RemoteCommand *)incomingData;
 
     // Serial.printf("command: %d\n", static_cast<int>(*command));
+
+    updateMaster(mac);
 
     if (commandCallback)
         commandCallback(*command);

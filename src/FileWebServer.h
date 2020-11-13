@@ -9,7 +9,9 @@
 WebServer server(80);
 
 File fsUploadFile;
-const char* host = "esp32fs";
+const char *host = "esp32fs";
+
+void (*goCallback)() = nullptr;
 
 String formatBytes(size_t bytes)
 {
@@ -31,7 +33,7 @@ String formatBytes(size_t bytes)
     }
 }
 
-String getContentType(const String& filename)
+String getContentType(const String &filename)
 {
     if (server.hasArg("download"))
     {
@@ -88,7 +90,7 @@ String getContentType(const String& filename)
     return "text/plain";
 }
 
-bool handleFileRead(const String& path)
+bool handleFileRead(const String &path)
 {
     DBG_OUTPUT_PORT.println("handleFileRead: " + path);
     String contentType = getContentType(path);
@@ -103,13 +105,21 @@ bool handleFileRead(const String& path)
     return file;
 }
 
+void handleGo()
+{
+    server.send(200, "text/plain", "Success");
+    
+    if (goCallback)
+        goCallback();
+}
+
 void handleFileUpload()
 {
     if (server.uri() != "/edit")
     {
         return;
     }
-    HTTPUpload& upload = server.upload();
+    HTTPUpload &upload = server.upload();
     if (upload.status == UPLOAD_FILE_START)
     {
         String filename = upload.filename;
@@ -156,7 +166,7 @@ void handleFileDelete()
     {
         return server.send(404, "text/plain", "FileNotFound");
     }
-    SD.remove((char*)path.c_str());
+    SD.remove((char *)path.c_str());
     server.send(200, "text/plain", "");
     path = String();
 }
@@ -177,7 +187,7 @@ void handleFileCreate()
     {
         return server.send(500, "text/plain", "FILE EXISTS");
     }
-    File file = SD.open((char*)path.c_str(), FILE_WRITE);
+    File file = SD.open((char *)path.c_str(), FILE_WRITE);
     if (file)
     {
         file.close();
@@ -207,18 +217,18 @@ void handleFileGet()
     }
 }
 
-String getParentDir(const String& path)
+String getParentDir(const String &path)
 {
     int i = path.lastIndexOf("/");
     return path.substring(0, i + 1);
 }
 
-void deletePath(const String& path)
+void deletePath(const String &path)
 {
     auto ftype = checkPath(path);
     if (ftype == IsFile)
     {
-        SD.remove((char*)path.c_str());
+        SD.remove((char *)path.c_str());
     }
 
     else if (ftype == IsDirectory)
@@ -231,12 +241,12 @@ void deletePath(const String& path)
             if (file.isDirectory())
                 deletePath(path + "/" + file.name());
             else
-                SD.remove((char*)(path + "/" + file.name()).c_str());
+                SD.remove((char *)(path + "/" + file.name()).c_str());
 
             file = root.openNextFile();
         }
 
-        SD.rmdir((char*)path.c_str());
+        SD.rmdir((char *)path.c_str());
     }
 }
 
@@ -301,7 +311,7 @@ void handleFileListArg()
     handleFileList(path);
 }
 
-bool handleFileRequest(const String& uri)
+bool handleFileRequest(const String &uri)
 {
     auto res = checkPath(uri);
     if (res == NotFound)
@@ -351,6 +361,8 @@ void initWebServer()
     server.on("/get", HTTP_GET, handleFileGet);
 
     server.on("/senddata", HTTP_GET, handleSendData);
+
+    server.on("/go", HTTP_GET, handleGo);
 
     // called when the url is not defined here
     // use it to load content from FILESYSTEM

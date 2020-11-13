@@ -9,16 +9,17 @@
 #include "WifiManager.h"
 #include "communicator.h"
 #include "nvsstrore.h"
+#include "battery.h"
+#include "otamanager.h"
+#include "touchmanager.h"
 
 ThermometerData thermometerData;
 DustSensorData dustSensorData;
 
 struct tm timeinfo;
 
-bool touchProcessed = false;
-int touchDetectionCounter = 0;
-bool measuring = false;
-int touchThreshold = 28;
+bool sensorRunning = false;
+
 int lastLogSec = -1;
 String currentLogfilePath;
 
@@ -34,11 +35,11 @@ void handleCommand(RemoteCommand c)
     if (c == StartLogging)
     {
         sds.wakeup();
-        measuring = true;
+        sensorRunning = true;
     }
     else if (c == StopLogging)
     {
-        measuring = false;
+        sensorRunning = false;
         sds.sleep();
     }
 }
@@ -46,7 +47,24 @@ void handleCommand(RemoteCommand c)
 void updateTime()
 {
     if (!getLocalTime(&timeinfo), 200)
-        Serial.println("Failed to obtain time");
+        ;
+    // Serial.println("Failed to obtain time");
+}
+
+void toggleSensorRunning()
+{
+    sensorRunning = !sensorRunning;
+    if (sensorRunning)
+    {
+        sendCommand(StartLogging);
+        sds.wakeup();
+        currentLogfilePath = createLogFile(timeinfo);
+    }
+    else
+    {
+        sendCommand(StopLogging);
+        sds.sleep();
+    }
 }
 
 void setup()
@@ -55,6 +73,7 @@ void setup()
 
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
+    initBattery();
 
     initNvs();
 
@@ -65,22 +84,26 @@ void setup()
     if (isMaster())
     {
         initThermometer();
-
         initSdCard();
     }
 
-    connectToWifi();
-    syncTime();
+    if (connectToWifi())
+    {
+        setupOTA();
+        syncTime();
+    }
 
     if (isMaster())
     {
         initWebServer();
+        goCallback = &toggleSensorRunning;
     }
-    initEspNow(isMaster());
-
-    if (!isMaster())
+    else
+    {
         commandCallback = &handleCommand;
-
+    }
+    
+    initEspNow(isMaster());
 }
 
 void printLocalTime()
@@ -97,7 +120,7 @@ void printLocalTime()
     Serial.println();
 }
 
-void printPPM()
+void displayPPM()
 {
     if (dustSensorData.pm10 != -1)
         display.printf("PM2.5:%.1f PM10:%.1f\n", dustSensorData.pm2_5, dustSensorData.pm10);
@@ -105,33 +128,9 @@ void printPPM()
         display.print("error");
 }
 
-void printTemp()
+void displayTemp()
 {
     display.printf("Temp: %.1f Hum: %.1f\n", thermometerData.temperature, thermometerData.humidity);
-}
-
-bool processTouchPin()
-{
-    auto touch_sensor_value = touchRead(PIN_TOUCH_1);
-    bool touch_detected = touch_sensor_value < touchThreshold;
-
-    if (touch_detected)
-        touchDetectionCounter++;
-    else
-        touchDetectionCounter = 0;
-    
-
-    if (touchDetectionCounter > 1 && !touchProcessed)
-    {
-        touchProcessed = true;
-        return true;
-    }
-    else if (!touch_detected)
-    {
-        touchProcessed = false;
-    }
-
-    return false;
 }
 
 void logSensorData()
@@ -154,31 +153,18 @@ void masterLoop()
 {
     thermometerData = updateTemperature();
 
-    printTemp();
+    displayTemp();
 
-    display.printf("touch value: %d\n", touchRead(PIN_TOUCH_1));
+    display.printf("touch value: %d\n", latestTouchValue);
 
     if (processTouchPin())
-    {
-        measuring = !measuring;
-        if (measuring)
-        {
-            sendCommand(StartLogging);
-            sds.wakeup();
-            currentLogfilePath = createLogFile(timeinfo);
-        }
-        else
-        {
-            sendCommand(StopLogging);
-            sds.sleep();
-        }
-    }
+        toggleSensorRunning();
 
-    if (measuring)
+    if (sensorRunning)
     {
         dustSensorData = updateDustsensorData();
         registerSensorData(settings.sensorId, dustSensorData);
-        printPPM();
+        displayPPM();
         if (lastLogSec != timeinfo.tm_sec)
         {
             lastLogSec = timeinfo.tm_sec;
@@ -194,10 +180,10 @@ void masterLoop()
 
 void servantLoop()
 {
-    if (measuring)
+    if (sensorRunning)
     {
         dustSensorData = updateDustsensorData();
-        printPPM();
+        displayPPM();
         sendSensorData(settings.sensorId, dustSensorData);
     }
 
@@ -215,7 +201,10 @@ void loop()
     lastmillis = nm;
 
     if (WiFi.isConnected())
+    {
+        ArduinoOTA.handle();
         updateTime();
+    }
 
     display.clearDisplay();
     display.setCursor(0, 0);
@@ -231,6 +220,7 @@ void loop()
     else
         servantLoop();
 
+    display.printf("Battery volt: %.3fv\n", readBatteryVoltage());
     display.printf("Cycle time: %lu", cycleTime);
 
     display.display();

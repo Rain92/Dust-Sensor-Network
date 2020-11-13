@@ -14,8 +14,7 @@
 
 #define PIN_LED 25
 
-#define BAT_MEASURE_ADC 35     // battery probe GPIO pin -> ADC1_CHANNEL_7
-#define BAT_VOLTAGE_DIVIDER 2  // voltage divider 100k/100k on board
+#define PIN_BATTERY_VOLTAGE 35     // battery probe GPIO pin -> ADC1_CHANNEL_7
 
 #define PIN_TOUCH_1 12
 
