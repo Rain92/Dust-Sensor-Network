@@ -25,8 +25,25 @@ int32_t getWiFiChannel(const char* ssid)
     return 0;
 }
 
+void fixIP()
+{
+    IPAddress staticIP(192, 168, 159, 150);
+    IPAddress gateway(192, 168, 159, 3);
+    IPAddress subnet(255, 255, 255, 0);
+    IPAddress dns(192, 168, 159, 3);
+    if (WiFi.localIP()[3] == 3)
+    {
+        if (WiFi.config(staticIP, gateway, subnet, dns, dns) == false)
+            Serial.println("IP Configuration failed.");
+
+        WiFi.begin(WIFI_SSID, WIFI_PWD);
+    }
+}
+
+
 bool connectToWifi(int timeoutSeconds = 5)
 {
+
     if (WiFi.status() == WL_CONNECTED)
         return true;
 
@@ -44,6 +61,9 @@ bool connectToWifi(int timeoutSeconds = 5)
         delay(1000);
         Serial.println("Establishing connection to WiFi..");
     }
+
+    fixIP();
+
 
     wifiConnected = true;
 

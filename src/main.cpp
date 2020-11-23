@@ -4,15 +4,14 @@
 #include "BME280Thermometer.h"
 #include "Display.h"
 #include "DustSensor.h"
-#include "WifiServer.h"
-#include "SdCard.h"
 #include "WifiManager.h"
-#include "communicator.h"
-#include "nvsstrore.h"
+#include "WifiServer.h"
 #include "battery.h"
+#include "communicator.h"
+#include "logger.h"
+#include "nvsstrore.h"
 #include "otamanager.h"
 #include "touchmanager.h"
-#include "logger.h"
 
 ThermometerData thermometerData;
 DustSensorData dustSensorData;
@@ -46,7 +45,7 @@ void handleCommand(RemoteCommand c)
 
 void updateTime()
 {
-    if (!getLocalTime(&timeinfo), 200)
+    if (!getLocalTime(&timeinfo, 200))
         ;
     // Serial.println("Failed to obtain time");
 }
@@ -104,6 +103,7 @@ void setup()
         initWebServer();
         goCallback = &toggleSensorRunning;
         statusCallback = &getStatus;
+        tagCallback = &addLoggingTag;
     }
     initEspNow(isMaster());
 

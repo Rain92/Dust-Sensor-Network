@@ -6,11 +6,13 @@
 #include "datastore.h"
 
 String currentLogfilePath;
-String loggingTag;
 
-void setTag(const String &tag)
+int loggingTag = 0;
+int tagCounter = 0;
+
+void addLoggingTag()
 {
-    loggingTag = tag;
+    loggingTag = ++tagCounter;
 }
 
 String createLogFile(tm &timeinfo)
@@ -33,7 +35,7 @@ void logSensorData(tm *timeinfo, ThermometerData *thermometerData)
     auto logFile = SD.open(currentLogfilePath.c_str(), FILE_WRITE);
 
     logFile.print(timeinfo, "%H:%M:%S, ");
-    logFile.printf("%s, %.1f, %.1f", loggingTag.c_str(), thermometerData->temperature, thermometerData->humidity);
+    logFile.printf("%d, %.1f, %.1f", loggingTag, thermometerData->temperature, thermometerData->humidity);
 
     for (int i = 0; i < MAX_NUM_SENSORS; i++)
         if (dataValid(i))
@@ -43,5 +45,5 @@ void logSensorData(tm *timeinfo, ThermometerData *thermometerData)
 
     logFile.close();
 
-    loggingTag = "";
+    loggingTag = 0;
 }

@@ -13,7 +13,7 @@ const char *host = "esp32fs";
 
 void (*goCallback)() = nullptr;
 bool (*statusCallback)() = nullptr;
-void (*tagCallback)(const String &tag) = nullptr;
+void (*tagCallback)() = nullptr;
 
 String formatBytes(size_t bytes)
 {
@@ -109,7 +109,6 @@ bool handleFileRead(const String &path)
 
 void handleGo()
 {
-
     if (goCallback)
     {
         goCallback();
@@ -265,7 +264,7 @@ void doAction(const String &arg)
     if (arg == "go" && goCallback)
         goCallback();
     else if (arg == "tag" && tagCallback)
-        tagCallback("tag");
+        tagCallback();
 }
 
 void handleFileList(String path)
@@ -292,10 +291,9 @@ void handleFileList(String path)
 
     bool isRoot = path.length() <= 1;
 
-    String output =
-        F(
-            R"(<html><head><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">)"
-            R"(<meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="container"><br /><br />)");
+    String output = F(
+        R"(<html><head><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">)"
+        R"(<meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="container"><br /><br />)");
 
     output += F("<a href='?action=go'>");
     if (!statusCallback || !statusCallback())
@@ -304,8 +302,9 @@ void handleFileList(String path)
     }
     else
     {
-        output += F("Stop Measuring</a>&emsp;&emsp;&emsp;"
-                    "<a href='?action=tag'>Set tag</a><br /><br />");
+        output +=
+            F("Stop Measuring</a>&emsp;&emsp;&emsp;"
+              "<a href='?action=tag'>Set tag</a><br /><br />");
     }
 
     if (root.isDirectory())
@@ -410,11 +409,9 @@ void initWebServer()
     });
 
     // get heap status, analog input value and all GPIO statuses in one json call
-    server.on("/all", HTTP_GET, []() {
+    server.on("/mem", HTTP_GET, []() {
         String json = "{";
         json += "\"heap\":" + String(ESP.getFreeHeap());
-        json += ", \"analog\":" + String(analogRead(A0));
-        json += ", \"gpio\":" + String((uint32_t)(0));
         json += "}";
         server.send(200, "text/json", json);
         json = String();
