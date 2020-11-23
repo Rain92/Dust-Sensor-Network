@@ -5,10 +5,6 @@
 
 #define BAT_VOLTAGE_DIVIDER 2  // voltage divider 100k/100k on board
 
-#define BAT_SCALE (1.0703 * (3.3 / 4096) * BAT_VOLTAGE_DIVIDER)
-
-#define BAT_NUM_SAMPLES 64
-
 void initBattery()
 {
     pinMode(PIN_BATTERY_VOLTAGE, INPUT);
@@ -16,11 +12,12 @@ void initBattery()
 
 float readBatteryVoltage()
 {
+    const int numSamples = 64;
     int analogValue = 0;
-    for (int i = 0; i < BAT_NUM_SAMPLES; i++)
-        analogValue += analogRead(PIN_BATTERY_VOLTAGE);
-    analogValue /= BAT_NUM_SAMPLES;
+        for (int i = 0; i < numSamples; i++)
+            analogValue += analogRead(PIN_BATTERY_VOLTAGE);
+    analogValue /= numSamples;
 
-    float voltage = analogValue * BAT_SCALE;
+    float voltage = analogValue * (3.3 / 4096) * BAT_VOLTAGE_DIVIDER;
     return voltage;
 }

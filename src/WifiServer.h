@@ -12,6 +12,8 @@ File fsUploadFile;
 const char *host = "esp32fs";
 
 void (*goCallback)() = nullptr;
+bool (*statusCallback)() = nullptr;
+void (*tagCallback)(const String &tag) = nullptr;
 
 String formatBytes(size_t bytes)
 {
@@ -107,10 +109,19 @@ bool handleFileRead(const String &path)
 
 void handleGo()
 {
-    server.send(200, "text/plain", "Success");
-    
+
     if (goCallback)
+    {
         goCallback();
+        if (!statusCallback)
+            server.send(200, "text/plain", "Success");
+        else
+            server.send(200, "text/plain", statusCallback() ? "Started Measuring" : "Stopped measuring");
+    }
+    else
+    {
+        server.send(200, "text/plain", "Failure");
+    }
 }
 
 void handleFileUpload()
@@ -249,12 +260,23 @@ void deletePath(const String &path)
         SD.rmdir((char *)path.c_str());
     }
 }
+void doAction(const String &arg)
+{
+    if (arg == "go" && goCallback)
+        goCallback();
+    else if (arg == "tag" && tagCallback)
+        tagCallback("tag");
+}
 
 void handleFileList(String path)
 {
     String deletefilepath = server.arg("delete");
     if (deletefilepath.length() > 1)
         deletePath(deletefilepath);
+
+    String actionarg = server.arg("action");
+    if (actionarg.length() > 1)
+        doAction(actionarg);
 
     DBG_OUTPUT_PORT.println("handleFileList: " + path);
 
@@ -271,7 +293,21 @@ void handleFileList(String path)
     bool isRoot = path.length() <= 1;
 
     String output =
-        R"(<html><head><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"></head><body class="container">)";
+        F(
+            R"(<html><head><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">)"
+            R"(<meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="container"><br /><br />)");
+
+    output += F("<a href='?action=go'>");
+    if (!statusCallback || !statusCallback())
+    {
+        output += F("Start Measuring</a><br /><br />");
+    }
+    else
+    {
+        output += F("Stop Measuring</a>&emsp;&emsp;&emsp;"
+                    "<a href='?action=tag'>Set tag</a><br /><br />");
+    }
+
     if (root.isDirectory())
     {
         for (int round = 0; round < 2; round++)

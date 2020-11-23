@@ -7,9 +7,9 @@
 #define MAGICKEY_FLASHKEY "magickey"
 #define SETTINGS_FLASHKEY "settings"
 
-#define SENSOR_ID_DEFAULT 5
+#define SENSOR_ID_DEFAULT 0
 
-#define SENSOR_ID_OVERRIDE 1
+#define SENSOR_ID_OVERRIDE 0
 
 struct Settings
 {

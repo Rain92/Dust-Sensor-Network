@@ -11,7 +11,7 @@ enum FileType
     IsDirectory
 };
 
-FileType checkPath(const String& path)
+FileType checkPath(const String &path)
 {
     FileType res;
     File file = SD.open(path.c_str(), FILE_READ);
@@ -39,19 +39,4 @@ bool initSdCard()
 
         return true;
     }
-}
-
-String createLogFile(tm& timeinfo)
-{
-    char logfilePath[50];
-    SD.mkdir((char*)"/logs/");
-    strftime(logfilePath, sizeof(logfilePath), "/logs/%y-%m-%d/", &timeinfo);
-    SD.mkdir(logfilePath);
-    strftime(logfilePath, sizeof(logfilePath), "/logs/%y-%m-%d/%H-%M-%S.txt", &timeinfo);
-
-    auto logFile = SD.open(logfilePath, FILE_WRITE);
-
-    logFile.close();
-
-    return logfilePath;
 }

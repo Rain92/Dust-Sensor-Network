@@ -4,7 +4,7 @@
 #include "BME280Thermometer.h"
 #include "Display.h"
 #include "DustSensor.h"
-#include "FileWebServer.h"
+#include "WifiServer.h"
 #include "SdCard.h"
 #include "WifiManager.h"
 #include "communicator.h"
@@ -12,6 +12,7 @@
 #include "battery.h"
 #include "otamanager.h"
 #include "touchmanager.h"
+#include "logger.h"
 
 ThermometerData thermometerData;
 DustSensorData dustSensorData;
@@ -21,7 +22,6 @@ struct tm timeinfo;
 bool sensorRunning = false;
 
 int lastLogSec = -1;
-String currentLogfilePath;
 
 unsigned long minCycleTime = 200;
 
@@ -67,6 +67,11 @@ void toggleSensorRunning()
     }
 }
 
+bool getStatus()
+{
+    return sensorRunning;
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -84,6 +89,7 @@ void setup()
     if (isMaster())
     {
         initThermometer();
+
         initSdCard();
     }
 
@@ -97,13 +103,12 @@ void setup()
     {
         initWebServer();
         goCallback = &toggleSensorRunning;
+        statusCallback = &getStatus;
     }
-    else
-    {
-        commandCallback = &handleCommand;
-    }
-    
     initEspNow(isMaster());
+
+    if (!isMaster())
+        commandCallback = &handleCommand;
 }
 
 void printLocalTime()
@@ -133,22 +138,6 @@ void displayTemp()
     display.printf("Temp: %.1f Hum: %.1f\n", thermometerData.temperature, thermometerData.humidity);
 }
 
-void logSensorData()
-{
-    auto logFile = SD.open(currentLogfilePath.c_str(), FILE_WRITE);
-
-    logFile.print(&timeinfo, "%H:%M:%S, ");
-    logFile.printf("%.1f, %.1f", thermometerData.temperature, thermometerData.humidity);
-
-    for (int i = 0; i < MAX_NUM_SENSORS; i++)
-        if (dataValid(i))
-            logFile.printf(", %d, %.1f, %.1f", i, sensorNetworkData[i].pm2_5, sensorNetworkData[i].pm10);
-
-    logFile.println();
-
-    logFile.close();
-}
-
 void masterLoop()
 {
     thermometerData = updateTemperature();
@@ -168,7 +157,7 @@ void masterLoop()
         if (lastLogSec != timeinfo.tm_sec)
         {
             lastLogSec = timeinfo.tm_sec;
-            logSensorData();
+            logSensorData(&timeinfo, &thermometerData);
         }
         display.printf("Connected Sensors: %d\n", countValidConnections());
     }
@@ -220,7 +209,7 @@ void loop()
     else
         servantLoop();
 
-    display.printf("Battery volt: %.3fv\n", readBatteryVoltage());
+    // display.printf("Battery voltage: %.1fv\n", readBatteryVoltage());
     display.printf("Cycle time: %lu", cycleTime);
 
     display.display();
