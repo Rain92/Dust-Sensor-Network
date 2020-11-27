@@ -62,7 +62,7 @@ bool connectToWifi(int timeoutSeconds = 5)
         Serial.println("Establishing connection to WiFi..");
     }
 
-    fixIP();
+    // fixIP();
 
 
     wifiConnected = true;

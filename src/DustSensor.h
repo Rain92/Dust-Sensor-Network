@@ -41,3 +41,16 @@ DustSensorData updateDustsensorData()
 
     return dustSensorData;
 }
+
+void sleepStartSds011()
+{
+    static bool done = false;
+    if (done)
+        return;
+
+    if (millis() > 1000)
+    {
+        sds.sleep();
+        done = true;
+    }
+}
