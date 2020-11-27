@@ -27,6 +27,8 @@ String createLogFile(tm &timeinfo)
 
     logFile.close();
 
+    tagCounter = 0;
+
     return logfilePath;
 }
 
