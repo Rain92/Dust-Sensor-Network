@@ -17,11 +17,14 @@ struct DustSensorData
 void initSDS011()
 {
     sdsSerial.begin(9600, SERIAL_8N1, SDS011_RX, SDS011_TX);
-    delay(50);
 
     // Serial.println(sds.queryFirmwareVersion().toString());
     // Serial.println(sds.setQueryReportingMode().toString());
-    sds.sleep();
+
+    auto res1 = sds.queryWorkingState();
+
+    if ((int)res1.state != 0)
+        sds.sleep();
 }
 
 DustSensorData updateDustsensorData()
@@ -40,17 +43,4 @@ DustSensorData updateDustsensorData()
     }
 
     return dustSensorData;
-}
-
-void sleepStartSds011()
-{
-    static bool done = false;
-    if (done)
-        return;
-
-    if (millis() > 1000)
-    {
-        sds.sleep();
-        done = true;
-    }
 }

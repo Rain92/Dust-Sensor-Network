@@ -182,7 +182,6 @@ void servantLoop()
 
 void loop()
 {
-    sleepStartSds011();
     static unsigned long lastmillis = 0;
     auto nm = millis();
     auto cycleTime = nm - lastmillis;
