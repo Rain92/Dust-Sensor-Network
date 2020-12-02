@@ -97,7 +97,7 @@ bool handleFileRead(const String &path)
     DBG_OUTPUT_PORT.println("handleFileRead: " + path);
     String contentType = getContentType(path);
 
-    File file = SD.open(path.c_str(), FILE_READ);
+    auto file = SD.open(path.c_str(), FILE_READ);
     if (file)
     {
         server.streamFile(file, contentType);
@@ -197,7 +197,7 @@ void handleFileCreate()
     {
         return server.send(500, "text/plain", "FILE EXISTS");
     }
-    File file = SD.open((char *)path.c_str(), FILE_WRITE);
+    auto file = SD.open((char *)path.c_str(), FILE_WRITE);
     if (file)
     {
         file.close();
@@ -243,9 +243,9 @@ void deletePath(const String &path)
 
     else if (ftype == IsDirectory)
     {
-        File root = SD.open(path.c_str());
+        auto root = SD.open(path.c_str());
         root.rewindDirectory();
-        File file = root.openNextFile();
+        auto file = root.openNextFile();
         while (file)
         {
             if (file.isDirectory())
@@ -259,27 +259,13 @@ void deletePath(const String &path)
         SD.rmdir((char *)path.c_str());
     }
 }
-void doAction(const String &arg)
-{
-    if (arg == "go" && goCallback)
-        goCallback();
-    else if (arg == "tag" && tagCallback)
-        tagCallback();
-}
 
 void handleFileList(String path)
 {
-    String deletefilepath = server.arg("delete");
-    if (deletefilepath.length() > 1)
-        deletePath(deletefilepath);
-
-    String actionarg = server.arg("action");
-    if (actionarg.length() > 1)
-        doAction(actionarg);
 
     DBG_OUTPUT_PORT.println("handleFileList: " + path);
 
-    File root = SD.open(path.c_str());
+    auto root = SD.open(path.c_str());
     if (!root.isDirectory())
     {
         root.close();
@@ -312,7 +298,7 @@ void handleFileList(String path)
         for (int round = 0; round < 2; round++)
         {
             root.rewindDirectory();
-            File file = root.openNextFile();
+            auto file = root.openNextFile();
 
             if (round == 0 && !isRoot)
                 output += "<a href='" + getParentDir(path) + "'>../</a><br /><br />";
@@ -340,22 +326,50 @@ void handleFileList(String path)
     root.close();
     server.send(200, "text/html", output);
 }
+
+bool handleGeneralRequest(const String &path)
+{
+    bool redirect = false;
+    String deletefilepath = server.arg("delete");
+    if (deletefilepath.length() > 1)
+    {
+        deletePath(deletefilepath);
+        redirect = true;
+    }
+
+    String actionarg = server.arg("action");
+    if (actionarg.length() > 1)
+    {
+        if (actionarg == "go" && goCallback)
+            goCallback();
+        else if (actionarg == "tag" && tagCallback)
+            tagCallback();
+        redirect = true;
+    }
+
+    if (redirect)
+    {
+        server.sendHeader("Location", path);
+        server.send(303);
+        return true;
+    }
+    else
+    {
+        auto res = checkPath(path);
+        if (res == NotFound)
+            return false;
+        else if (res == IsFile)
+            return handleFileRead(path);
+        else if (res == IsDirectory)
+            handleFileList(path);
+        return true;
+    }
+}
+
 void handleFileListArg()
 {
     String path = server.arg("dir");
     handleFileList(path);
-}
-
-bool handleFileRequest(const String &uri)
-{
-    auto res = checkPath(uri);
-    if (res == NotFound)
-        return false;
-    else if (res == IsFile)
-        return handleFileRead(uri);
-    else if (res == IsDirectory)
-        handleFileList(uri);
-    return true;
 }
 
 void handleSendData()
@@ -366,7 +380,6 @@ void handleSendData()
 
     if (sensor <= 0 || pm25 <= 0 || pm10 <= 0)
         return server.send(500, "text/plain", "BAD ARGS");
-    ;
 
     registerSensorData(sensor, DustSensorData{pm25, pm10});
 
@@ -402,7 +415,7 @@ void initWebServer()
     // called when the url is not defined here
     // use it to load content from FILESYSTEM
     server.onNotFound([]() {
-        if (!handleFileRequest(server.uri()))
+        if (!handleGeneralRequest(server.uri()))
         {
             server.send(404, "text/plain", "FileNotFound");
         }

@@ -5,12 +5,9 @@
 #include <string.h>
 #include "time.h"
 
-#define WIFI_SSID "Andreas-PC_AP"
-#define WIFI_PWD "12345678"
+#include "wificredentials.h"
 
-bool wifiConnected = false;
-
-int32_t getWiFiChannel(const char* ssid)
+int32_t getWiFiChannel(const char *ssid)
 {
     if (int32_t n = WiFi.scanNetworks())
     {
@@ -25,7 +22,7 @@ int32_t getWiFiChannel(const char* ssid)
     return 0;
 }
 
-void fixIP()
+void fixIP(int n)
 {
     IPAddress staticIP(192, 168, 159, 150);
     IPAddress gateway(192, 168, 159, 3);
@@ -36,10 +33,9 @@ void fixIP()
         if (WiFi.config(staticIP, gateway, subnet, dns, dns) == false)
             Serial.println("IP Configuration failed.");
 
-        WiFi.begin(WIFI_SSID, WIFI_PWD);
+        WiFi.begin(KNOWN_SSID[n], KNOWN_PASSWORD[n]);
     }
 }
-
 
 bool connectToWifi(int timeoutSeconds = 5)
 {
@@ -51,7 +47,26 @@ bool connectToWifi(int timeoutSeconds = 5)
 
     WiFi.mode(WIFI_AP_STA);
 
-    WiFi.begin(WIFI_SSID, WIFI_PWD);
+    int nbVisibleNetworks = WiFi.scanNetworks();
+
+    boolean wifiFound = false;
+    int n;
+    for (n = 0; n < KNOWN_SSID_COUNT; n++)
+    {
+        for (int i = 0; i < nbVisibleNetworks; ++i)
+        {
+            if (!strcmp(KNOWN_SSID[n], WiFi.SSID(i).c_str()))
+            {
+                wifiFound = true;
+                break;
+            }
+        }
+        if (wifiFound)
+            break;
+    }
+
+    if (wifiFound)
+        WiFi.begin(KNOWN_SSID[n], KNOWN_PASSWORD[n]);
 
     int loopcounter = 0;
     while (WiFi.status() != WL_CONNECTED)
@@ -59,13 +74,11 @@ bool connectToWifi(int timeoutSeconds = 5)
         if (++loopcounter > timeoutSeconds)
             return false;
         delay(1000);
-        Serial.println("Establishing connection to WiFi..");
+        Serial.print("Establishing connection to WiFi: ");
+        Serial.println(KNOWN_SSID[n]);
     }
 
-    // fixIP();
-
-
-    wifiConnected = true;
+    // fixIP(n);
 
     Serial.println("Connected to network");
     Serial.println(WiFi.macAddress());
@@ -73,30 +86,26 @@ bool connectToWifi(int timeoutSeconds = 5)
     return true;
 }
 
-void initComWifi()
-{
-    WiFi.mode(WIFI_STA);
+// void initComWifi()
+// {
+//     WiFi.mode(WIFI_STA);
 
-    int32_t channel = getWiFiChannel(WIFI_SSID);
+//     int32_t channel = getWiFiChannel(WIFI_SSID);
 
-    esp_wifi_set_promiscuous(true);
-    esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
-    esp_wifi_set_promiscuous(false);
-}
+//     esp_wifi_set_promiscuous(true);
+//     esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+//     esp_wifi_set_promiscuous(false);
+// }
 
 void endWifi()
 {
-    if (wifiConnected)
-    {
-        WiFi.disconnect(true, true);
-        WiFi.mode(WIFI_OFF);
-        wifiConnected = false;
-    }
+    WiFi.disconnect(true, true);
+    WiFi.mode(WIFI_OFF);
 }
 
 void syncTime()
 {
-    const char* ntpServer = "pool.ntp.org";
+    const char *ntpServer = "pool.ntp.org";
     const long gmtOffset_sec = 3600;
     const int daylightOffset_sec = 3600;
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);

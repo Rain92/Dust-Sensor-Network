@@ -14,7 +14,7 @@ enum FileType
 FileType checkPath(const String &path)
 {
     FileType res;
-    File file = SD.open(path.c_str(), FILE_READ);
+    auto file = SD.open(path.c_str(), FILE_READ);
     if (!file)
         res = NotFound;
     else if (!file.isDirectory())
