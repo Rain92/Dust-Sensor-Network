@@ -50,19 +50,27 @@ void updateTime()
     // Serial.println("Failed to obtain time");
 }
 
-void toggleSensorRunning()
+void toggleSensorRunning(bool start)
 {
-    sensorRunning = !sensorRunning;
-    if (sensorRunning)
+    if (start && !sensorRunning)
     {
-        sendCommand(StartLogging);
+        sensorRunning = true;
+        if (isMaster())
+            sendCommand(StartLogging);
+
         sds.wakeup();
-        currentLogfilePath = createLogFile(timeinfo);
+
+        if (isMaster())
+            currentLogfilePath = createLogFile(timeinfo);
+        Serial.println("Starting Sensor.");
     }
-    else
+    else if (!start && sensorRunning)
     {
-        sendCommand(StopLogging);
+        sensorRunning = false;
+        if (isMaster())
+            sendCommand(StopLogging);
         sds.sleep();
+        Serial.println("Stopping Sensor.");
     }
 }
 
@@ -101,7 +109,7 @@ void setup()
     if (isMaster())
     {
         initWebServer();
-        goCallback = &toggleSensorRunning;
+        toggleCallback = &toggleSensorRunning;
         statusCallback = &getStatus;
         tagCallback = &addLoggingTag;
     }
@@ -130,7 +138,7 @@ void displayPPM()
     if (dustSensorData.pm10 != -1)
         display.printf("PM2.5:%.1f PM10:%.1f\n", dustSensorData.pm2_5, dustSensorData.pm10);
     else
-        display.print("error");
+        display.println("error reading Sensor");
 }
 
 void displayTemp()
@@ -146,8 +154,8 @@ void masterLoop()
 
     display.printf("touch value: %d\n", latestTouchValue);
 
-    if (processTouchPin())
-        toggleSensorRunning();
+    // if (processTouchPin())
+    //     toggleSensorRunning();
 
     if (sensorRunning)
     {
@@ -175,7 +183,6 @@ void servantLoop()
         displayPPM();
         sendSensorData(settings.sensorId, dustSensorData);
     }
-
     else
         display.println("Sensor sleeping");
 }

@@ -37,7 +37,7 @@ void fixIP(int n)
     }
 }
 
-bool connectToWifi(int timeoutSeconds = 5)
+bool connectToWifi(int timeoutSeconds = 10)
 {
 
     if (WiFi.status() == WL_CONNECTED)

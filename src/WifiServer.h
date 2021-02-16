@@ -11,7 +11,7 @@ WebServer server(80);
 File fsUploadFile;
 const char *host = "esp32fs";
 
-void (*goCallback)() = nullptr;
+void (*toggleCallback)(bool) = nullptr;
 bool (*statusCallback)() = nullptr;
 void (*tagCallback)() = nullptr;
 
@@ -107,11 +107,11 @@ bool handleFileRead(const String &path)
     return file;
 }
 
-void handleGo()
+void handleToggle(bool start)
 {
-    if (goCallback)
+    if (toggleCallback)
     {
-        goCallback();
+        toggleCallback(start);
         if (!statusCallback)
             server.send(200, "text/plain", "Success");
         else
@@ -281,16 +281,16 @@ void handleFileList(String path)
         R"(<html><head><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">)"
         R"(<meta name="viewport" content="width=device-width, initial-scale=1"></head><body class="container"><br /><br />)");
 
-    output += F("<a href='?action=go'>");
     if (!statusCallback || !statusCallback())
     {
-        output += F("Start Measuring</a><br /><br />");
+        output += F("<a href='?action=start'>"
+                    "Start Measuring</a><br /><br />");
     }
     else
     {
-        output +=
-            F("Stop Measuring</a>&emsp;&emsp;&emsp;"
-              "<a href='?action=tag'>Set tag</a><br /><br />");
+        output += F("<a href='?action=stop'>"
+                    "Stop Measuring</a>&emsp;&emsp;&emsp;"
+                    "<a href='?action=tag'>Set tag</a><br /><br />");
     }
 
     if (root.isDirectory())
@@ -340,8 +340,10 @@ bool handleGeneralRequest(const String &path)
     String actionarg = server.arg("action");
     if (actionarg.length() > 1)
     {
-        if (actionarg == "go" && goCallback)
-            goCallback();
+        if (actionarg == "start" && toggleCallback)
+            toggleCallback(true);
+        else if (actionarg == "stop" && toggleCallback)
+            toggleCallback(false);
         else if (actionarg == "tag" && tagCallback)
             tagCallback();
         redirect = true;
@@ -410,7 +412,8 @@ void initWebServer()
 
     server.on("/senddata", HTTP_GET, handleSendData);
 
-    server.on("/go", HTTP_GET, handleGo);
+    server.on("/start", HTTP_GET, []() { handleToggle(true); });
+    server.on("/stop", HTTP_GET, []() { handleToggle(false); });
 
     // called when the url is not defined here
     // use it to load content from FILESYSTEM

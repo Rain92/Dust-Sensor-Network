@@ -26,7 +26,7 @@ void setupOTA()
         .onProgress([](unsigned int progress, unsigned int total) {
             display.clearDisplay();
             display.setCursor(0, 0);
-            display.printf("Progress: %u%%\n", (progress / (total / 100)));
+            display.printf("Updating Firmware\nProgress: %u%%\n", (progress / (total / 100)));
             display.display();
         })
         .onError([](ota_error_t error) {
