@@ -2,18 +2,17 @@
 
 #include <ArduinoNvs.h>
 
-#define MAGICKEY 83634762ull
+#include "nodeconfig.h"
+
+#define MAGICKEY 80633562ull
 
 #define MAGICKEY_FLASHKEY "magickey"
 #define SETTINGS_FLASHKEY "settings"
 
-#define SENSOR_ID_DEFAULT 0
-
-#define SENSOR_ID_OVERRIDE 0
-
 struct Settings
 {
-    int sensorId = SENSOR_ID_DEFAULT;
+    int nodeId = NODE_ID;
+    NodeType nodeType = NODE_TYPE;
 };
 
 Settings settings;
@@ -47,9 +46,10 @@ void initNvs()
         if (!res)
             Serial.println("Couldn't load settings.");
 
-        if (SENSOR_ID_OVERRIDE > 0)
+        if (OVERRIDE_NODE_SETTINGS > 0)
         {
-            settings.sensorId = SENSOR_ID_DEFAULT;
+            settings.nodeId = NODE_ID;
+            settings.nodeType = NODE_TYPE;
             saveSettings();
         }
     }

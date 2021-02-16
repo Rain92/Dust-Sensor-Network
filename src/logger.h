@@ -1,9 +1,9 @@
 #pragma once
 
-#include "BME280Thermometer.h"
-#include "DustSensor.h"
-#include "SdCard.h"
+#include "bme280thermometer.h"
 #include "datastore.h"
+#include "dustsensor.h"
+#include "sdcard.h"
 
 String currentLogfilePath;
 
@@ -40,8 +40,11 @@ void logSensorData(tm *timeinfo, ThermometerData *thermometerData)
     logFile.printf("%d, %.1f, %.1f", loggingTag, thermometerData->temperature, thermometerData->humidity);
 
     for (int i = 0; i < MAX_NUM_SENSORS; i++)
-        if (dataValid(i))
+        if (dataValid(dataTimestamps[i]))
             logFile.printf(", %d, %.1f, %.1f", i, sensorNetworkData[i].pm2_5, sensorNetworkData[i].pm10);
+
+    if (dataValid(remoteWindSensorTimestamp))
+        logFile.printf(", W, %.2f, %d", remoteWindSensorData.windspeed, remoteWindSensorData.winddirection);
 
     logFile.println();
 

@@ -262,7 +262,6 @@ void deletePath(const String &path)
 
 void handleFileList(String path)
 {
-
     DBG_OUTPUT_PORT.println("handleFileList: " + path);
 
     auto root = SD.open(path.c_str());
@@ -283,14 +282,16 @@ void handleFileList(String path)
 
     if (!statusCallback || !statusCallback())
     {
-        output += F("<a href='?action=start'>"
-                    "Start Measuring</a><br /><br />");
+        output +=
+            F("<a href='?action=start'>"
+              "Start Measuring</a><br /><br />");
     }
     else
     {
-        output += F("<a href='?action=stop'>"
-                    "Stop Measuring</a>&emsp;&emsp;&emsp;"
-                    "<a href='?action=tag'>Set tag</a><br /><br />");
+        output +=
+            F("<a href='?action=stop'>"
+              "Stop Measuring</a>&emsp;&emsp;&emsp;"
+              "<a href='?action=tag'>Set tag</a><br /><br />");
     }
 
     if (root.isDirectory())
@@ -383,7 +384,7 @@ void handleSendData()
     if (sensor <= 0 || pm25 <= 0 || pm10 <= 0)
         return server.send(500, "text/plain", "BAD ARGS");
 
-    registerSensorData(sensor, DustSensorData{pm25, pm10});
+    registerDustSensorData(sensor, DustSensorData{pm25, pm10});
 
     server.send(200, "text/plain", "Success");
 }

@@ -2,13 +2,15 @@
 
 #include <esp_now.h>
 
-#include "DustSensor.h"
 #include "datastore.h"
+#include "dustsensor.h"
+
+#define DATA_TYPE_DUSTSENSOR 0
+#define DATA_TYPE_WINDSENSOR 1
 
 uint8_t broadcastAddress[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
-//D8:A0:1D:61:21:B0
-uint8_t masterAddress[] = {0xD8, 0xA0, 0x1D, 0x60, 0xD1, 0x3C};
+uint8_t masterAddress[] = {0xD8, 0xA0, 0x1D, 0x60, 0xD1, 0x3C};  // default adress
 
 esp_now_peer_info_t peerInfo;
 
@@ -18,24 +20,48 @@ enum RemoteCommand
     StopLogging
 };
 
-struct DataPacket
+struct DustSensorDataPacket
 {
+    uint8_t dataType;
     uint8_t sensor;
     DustSensorData data;
 };
 
+struct WindSensorDataPacket
+{
+    uint8_t dataType;
+    uint8_t sensor;
+    WindSensorData data;
+};
+
 void (*commandCallback)(RemoteCommand) = nullptr;
 
-void sendSensorData(uint8_t sensor, const DustSensorData &data)
+void sendDataToMaster(const uint8_t *data, size_t len)
 {
-    DataPacket p;
-    p.sensor = sensor;
-    p.data = data;
-
-    esp_err_t result = esp_now_send(masterAddress, (uint8_t *)&p, sizeof(p));
+    esp_err_t result = esp_now_send(masterAddress, data, len);
 
     if (result != ESP_OK)
         Serial.println("Error sending the data");
+}
+
+void sendDustSensorData(uint8_t sensor, const DustSensorData &data)
+{
+    DustSensorDataPacket p;
+    p.dataType = DATA_TYPE_DUSTSENSOR;
+    p.sensor = sensor;
+    p.data = data;
+
+    sendDataToMaster((uint8_t *)&p, sizeof(p));
+}
+
+void sendWindSensorData(uint8_t sensor, const WindSensorData &data)
+{
+    WindSensorDataPacket p;
+    p.dataType = DATA_TYPE_WINDSENSOR;
+    p.sensor = sensor;
+    p.data = data;
+
+    sendDataToMaster((uint8_t *)&p, sizeof(p));
 }
 
 void sendCommand(RemoteCommand command)
@@ -64,17 +90,34 @@ void OnDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len)
     //         Serial.print(":");
     // }
     // Serial.println();
-    if (len != sizeof(DataPacket))
+    if (incomingData[0] == DATA_TYPE_DUSTSENSOR)
     {
-        Serial.println("Invalid data lenght.");
-        return;
+        if (len != sizeof(DustSensorDataPacket))
+        {
+            Serial.println("Invalid data lenght.");
+            return;
+        }
+
+        DustSensorDataPacket *recieved = (DustSensorDataPacket *)incomingData;
+
+        // Serial.printf("pm2.5: %.1f pm10: %.1f\n", recieved->data.pm2_5, recieved->data.pm10);
+
+        registerDustSensorData(recieved->sensor, recieved->data);
     }
+    if (incomingData[0] == DATA_TYPE_WINDSENSOR)
+    {
+        if (len != sizeof(WindSensorDataPacket))
+        {
+            Serial.println("Invalid data lenght.");
+            return;
+        }
 
-    DataPacket *recieved = (DataPacket *)incomingData;
+        WindSensorDataPacket *recieved = (WindSensorDataPacket *)incomingData;
 
-    // Serial.printf("pm2.5: %.1f pm10: %.1f\n", recieved->data.pm2_5, recieved->data.pm10);
+        registerWindSensorData(recieved->sensor, recieved->data);
 
-    registerSensorData(recieved->sensor, recieved->data);
+        // Serial.printf("Windspeed: %.2f Winddirection: %d\n", recieved->data.windspeed, recieved->data.winddirection);
+    }
 }
 
 void updateMaster(const uint8_t *mac)

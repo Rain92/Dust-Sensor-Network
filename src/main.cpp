@@ -9,16 +9,19 @@
 #include "battery.h"
 #include "communicator.h"
 #include "logger.h"
+#include "nodeconfig.h"
 #include "nvsstrore.h"
 #include "otamanager.h"
 #include "touchmanager.h"
+#include "windsensor.h"
 
 ThermometerData thermometerData;
 DustSensorData dustSensorData;
+WindSensorData windSensorData;
 
 struct tm timeinfo;
 
-bool sensorRunning = false;
+bool nodeRunnig = false;
 
 int lastLogSec = -1;
 
@@ -26,7 +29,7 @@ unsigned long minCycleTime = 200;
 
 bool isMaster()
 {
-    return settings.sensorId == 0;
+    return settings.nodeId == 0;
 }
 
 void handleCommand(RemoteCommand c)
@@ -34,11 +37,11 @@ void handleCommand(RemoteCommand c)
     if (c == StartLogging)
     {
         sds.wakeup();
-        sensorRunning = true;
+        nodeRunnig = true;
     }
     else if (c == StopLogging)
     {
-        sensorRunning = false;
+        nodeRunnig = false;
         sds.sleep();
     }
 }
@@ -52,9 +55,9 @@ void updateTime()
 
 void toggleSensorRunning(bool start)
 {
-    if (start && !sensorRunning)
+    if (start && !nodeRunnig)
     {
-        sensorRunning = true;
+        nodeRunnig = true;
         if (isMaster())
             sendCommand(StartLogging);
 
@@ -64,9 +67,9 @@ void toggleSensorRunning(bool start)
             currentLogfilePath = createLogFile(timeinfo);
         Serial.println("Starting Sensor.");
     }
-    else if (!start && sensorRunning)
+    else if (!start && nodeRunnig)
     {
-        sensorRunning = false;
+        nodeRunnig = false;
         if (isMaster())
             sendCommand(StopLogging);
         sds.sleep();
@@ -76,7 +79,7 @@ void toggleSensorRunning(bool start)
 
 bool getStatus()
 {
-    return sensorRunning;
+    return nodeRunnig;
 }
 
 void setup()
@@ -91,7 +94,10 @@ void setup()
 
     initDisplay();
 
-    initSDS011();
+    if (settings.nodeType == NodeTypeDustSensor)
+        initSDS011();
+    else if (settings.nodeType == NodeTypeWindSensor)
+        initWS200();
 
     if (isMaster())
     {
@@ -133,12 +139,20 @@ void printLocalTime()
     Serial.println();
 }
 
-void displayPPM()
+void displayDustSensorData()
 {
     if (dustSensorData.pm10 != -1)
         display.printf("PM2.5:%.1f PM10:%.1f\n", dustSensorData.pm2_5, dustSensorData.pm10);
     else
         display.println("error reading Sensor");
+}
+
+void displayWindData()
+{
+    display.printf("Wind speed: %.2f\n", windSensorData.windspeed);
+    display.printf("Wind direction: %d\n", windSensorData.winddirection);
+    if (windSensorData.status != 0 && windSensorData.status != -1)
+        display.println(ws200.checkStatus(windSensorData.status));
 }
 
 void displayTemp()
@@ -157,11 +171,11 @@ void masterLoop()
     // if (processTouchPin())
     //     toggleSensorRunning();
 
-    if (sensorRunning)
+    if (nodeRunnig)
     {
-        dustSensorData = updateDustsensorData();
-        registerSensorData(settings.sensorId, dustSensorData);
-        displayPPM();
+        dustSensorData = updateDustSensorData();
+        registerDustSensorData(settings.nodeId, dustSensorData);
+        displayDustSensorData();
         if (lastLogSec != timeinfo.tm_sec)
         {
             lastLogSec = timeinfo.tm_sec;
@@ -170,21 +184,36 @@ void masterLoop()
         display.printf("Connected Sensors: %d\n", countValidConnections());
     }
     else
-        display.println("Sensor sleeping");
+        display.println("Node inactive");
 
     handleRequests();
 }
 
 void servantLoop()
 {
-    if (sensorRunning)
+    if (settings.nodeType == NodeTypeWindSensor)
     {
-        dustSensorData = updateDustsensorData();
-        displayPPM();
-        sendSensorData(settings.sensorId, dustSensorData);
+        windSensorData = updateWindSensorData();
+        displayWindData();
+    }
+
+    if (nodeRunnig)
+    {
+        if (settings.nodeType == NodeTypeDustSensor)
+        {
+            dustSensorData = updateDustSensorData();
+            displayDustSensorData();
+            sendDustSensorData(settings.nodeId, dustSensorData);
+        }
+        if (settings.nodeType == NodeTypeWindSensor)
+        {
+            sendWindSensorData(settings.nodeId, windSensorData);
+        }
     }
     else
-        display.println("Sensor sleeping");
+    {
+        display.println("Node inactive");
+    }
 }
 
 void loop()
@@ -205,7 +234,7 @@ void loop()
     display.clearDisplay();
     display.setCursor(0, 0);
 
-    display.printf("Sensor Id: %d\n", settings.sensorId);
+    display.printf("Sensor Id: %d\n", settings.nodeId);
 
     display.println(WiFi.isConnected() ? WiFi.localIP().toString() : String("No Connection"));
 

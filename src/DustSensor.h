@@ -27,7 +27,7 @@ void initSDS011()
         sds.sleep();
 }
 
-DustSensorData updateDustsensorData()
+DustSensorData updateDustSensorData()
 {
     DustSensorData dustSensorData;
     auto res = sds.queryPm();
