@@ -166,7 +166,7 @@ void masterLoop()
 
     displayTemp();
 
-    display.printf("touch value: %d\n", latestTouchValue);
+    // display.printf("touch value: %d\n", latestTouchValue);
 
     // if (processTouchPin())
     //     toggleSensorRunning();

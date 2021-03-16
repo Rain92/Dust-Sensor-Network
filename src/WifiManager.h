@@ -39,7 +39,6 @@ void fixIP(int n)
 
 bool connectToWifi(int timeoutSeconds = 10)
 {
-
     if (WiFi.status() == WL_CONNECTED)
         return true;
 
@@ -105,8 +104,8 @@ void endWifi()
 
 void syncTime()
 {
-    const char *ntpServer = "pool.ntp.org";
-    const long gmtOffset_sec = 3600;
-    const int daylightOffset_sec = 3600;
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    const char *ntpServer = "de.pool.ntp.org";
+    const char *defaultTimezone = "CET-1CEST,M3.5.0/2,M10.5.0/3";
+
+    configTzTime(defaultTimezone, ntpServer);  // sets TZ and starts NTP sync
 }

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <mySD.h>
+#include <algorithm>
+#include <tuple>
+#include <vector>
 
 #include "pins.h"
 
@@ -24,6 +27,32 @@ FileType checkPath(const String &path)
 
     file.close();
     return res;
+}
+
+std::tuple<std::vector<String>, std::vector<String>> listFiles(File &dir)
+{
+    std::vector<String> dirs;
+    std::vector<String> files;
+
+    if (dir.isDirectory())
+    {
+        dir.rewindDirectory();
+        auto file = dir.openNextFile();
+
+        while (file)
+        {
+            if (file.isDirectory())
+                dirs.push_back(file.name());
+            else
+                files.push_back(file.name());
+
+            file = dir.openNextFile();
+        }
+    }
+    std::sort(dirs.begin(), dirs.end());
+    std::sort(files.begin(), files.end());
+
+    return std::tuple<std::vector<String>, std::vector<String>>(std::move(dirs), std::move(files));
 }
 
 bool initSdCard()

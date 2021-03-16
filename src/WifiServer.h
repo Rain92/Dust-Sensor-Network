@@ -2,6 +2,7 @@
 #include <ESPmDNS.h>
 #include <SdCard.h>
 #include <WebServer.h>
+#include <vector>
 #include "datastore.h"
 
 #define DBG_OUTPUT_PORT Serial
@@ -262,6 +263,8 @@ void deletePath(const String &path)
 
 void handleFileList(String path)
 {
+    auto start = millis();
+
     DBG_OUTPUT_PORT.println("handleFileList: " + path);
 
     auto root = SD.open(path.c_str());
@@ -296,35 +299,40 @@ void handleFileList(String path)
 
     if (root.isDirectory())
     {
+        auto tuple = listFiles(root);
+
+        auto parentDir = getParentDir(path);
         for (int round = 0; round < 2; round++)
         {
-            root.rewindDirectory();
-            auto file = root.openNextFile();
+            auto *entrylist = round == 0 ? &std::get<0>(tuple) : &std::get<1>(tuple);
+            bool isdir = round == 0 ? true : false;
 
             if (round == 0 && !isRoot)
-                output += "<a href='" + getParentDir(path) + "'>../</a><br /><br />";
+                output += "<a href='" + parentDir + "'>../</a><br /><br />";
 
-            while (file)
+            for (auto &filename : *entrylist)
             {
-                String fpath = path + "/" + file.name();
-                if ((file.isDirectory() && round == 0) || (!file.isDirectory() && round == 1))
-                {
-                    output += "<a href='" + fpath + "'>" + file.name();
-                    if (file.isDirectory())
-                        output += "/";
+                String fpath = path + "/" + filename;
 
-                    output += "</a>\n";
-                    output += "&emsp;<a href='?delete=" + fpath + "'><i class='glyphicon glyphicon-remove'></i></a>";
-                    output += "<br /><br />";
-                }
+                output += "<a href='" + fpath + "'>" + filename;
+                if (isdir)
+                    output += "/";
 
-                file = root.openNextFile();
+                output +=
+                    "</a>\n"
+                    "&emsp;<a href='?delete=" +
+                    fpath +
+                    "'><i class='glyphicon glyphicon-remove'></i></a>"
+                    "<br /><br />";
             }
         }
     }
     output += "</body></html>";
 
     root.close();
+
+    DBG_OUTPUT_PORT.printf("handleFileList took: %lums\n", millis() - start);
+
     server.send(200, "text/html", output);
 }
 
