@@ -14,8 +14,8 @@ float readBatteryVoltage()
 {
     const int numSamples = 64;
     int analogValue = 0;
-        for (int i = 0; i < numSamples; i++)
-            analogValue += analogRead(PIN_BATTERY_VOLTAGE);
+    for (int i = 0; i < numSamples; i++)
+        analogValue += analogRead(PIN_BATTERY_VOLTAGE);
     analogValue /= numSamples;
 
     float voltage = analogValue * (3.3 / 4096) * BAT_VOLTAGE_DIVIDER;

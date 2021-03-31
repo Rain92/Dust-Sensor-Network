@@ -65,7 +65,6 @@ bool initSdCard()
     else
     {
         Serial.println("Card Mount Succeeded!");
-
         return true;
     }
 }
