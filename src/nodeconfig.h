@@ -15,3 +15,6 @@ enum NodeType
 
 // 0 -> is master
 #define NODE_ID 0
+
+// if nonzero the master will try to publish data to the specified mqtt server
+#define USE_MQTT 1

@@ -9,8 +9,9 @@
 #include "battery.h"
 #include "communicator.h"
 #include "logger.h"
+#include "mqtt.h"
 #include "nodeconfig.h"
-#include "nvsstrore.h"
+#include "nvsstore.h"
 #include "otamanager.h"
 #include "touchmanager.h"
 #include "windsensor.h"
@@ -59,9 +60,14 @@ void toggleSensorRunning(bool start)
     {
         nodeRunnig = true;
         if (isMaster())
+        {
+            if (USE_MQTT)
+                connectMqtt();
             sendCommand(StartLogging);
+        }
 
-        sds.wakeup();
+        if (settings.nodeType == NodeTypeDustSensor)
+            sds.wakeup();
 
         if (isMaster())
             currentLogfilePath = createLogFile(timeinfo);
@@ -71,8 +77,14 @@ void toggleSensorRunning(bool start)
     {
         nodeRunnig = false;
         if (isMaster())
+        {
             sendCommand(StopLogging);
-        sds.sleep();
+            if (USE_MQTT)
+                disconnectMqtt();
+        }
+
+        if (settings.nodeType == NodeTypeDustSensor)
+            sds.sleep();
         Serial.println("Stopping Sensor.");
     }
 }
@@ -118,6 +130,9 @@ void setup()
         toggleCallback = &toggleSensorRunning;
         statusCallback = &getStatus;
         tagCallback = &addLoggingTag;
+
+        if (USE_MQTT)
+            initMqtt();
     }
     initEspNow(isMaster());
 
@@ -179,7 +194,12 @@ void masterLoop()
         if (lastLogSec != timeinfo.tm_sec)
         {
             lastLogSec = timeinfo.tm_sec;
-            logSensorData(&timeinfo, &thermometerData);
+            auto str = makeMeasurementString(&timeinfo, &thermometerData);
+
+            logString(str);
+
+            if (USE_MQTT)
+                publishMqtt(str);
         }
         display.printf("Connected Sensors: %d\n", countValidConnections());
     }

@@ -7,8 +7,13 @@
 
 String currentLogfilePath;
 
-int loggingTag = 0;
+// tag counter for the active experiment
 int tagCounter = 0;
+// tag to be written to sdcard if not zero
+int loggingTag = 0;
+
+// active Sensor counter
+int sensorCounter = 0;
 
 void addLoggingTag()
 {
@@ -28,25 +33,41 @@ String createLogFile(tm &timeinfo)
     logFile.close();
 
     tagCounter = 0;
+    sensorCounter = 0;
 
     return logfilePath;
 }
 
-void logSensorData(tm *timeinfo, ThermometerData *thermometerData)
+String makeMeasurementString(tm *timeinfo, ThermometerData *thermometerData)
+{
+    char buf[200];
+
+    int idx = 0;
+    idx += strftime(buf + idx, 200, "%H:%M:%S, ", timeinfo);
+    idx += sprintf(buf + idx, "%d, %.1f, %.1f", loggingTag, thermometerData->temperature, thermometerData->humidity);
+
+    for (int i = 0; i < MAX_NUM_SENSORS; i++)
+    {
+        if (dataValid(dataTimestamps[i]))
+        {
+            idx += sprintf(buf + idx, ", %d, %.1f, %.1f", i, sensorNetworkData[i].pm2_5, sensorNetworkData[i].pm10);
+            sensorCounter = max(sensorCounter, i);
+        }
+        else if (i <= sensorCounter)
+            idx += sprintf(buf + idx, ", %d, %d, %d", i, -1, -1);
+    }
+
+    if (dataValid(remoteWindSensorTimestamp))
+        idx += sprintf(buf + idx, ", W, %.2f, %d", remoteWindSensorData.windspeed, remoteWindSensorData.winddirection);
+
+    return String(buf);
+}
+
+void logString(const String &str)
 {
     auto logFile = SD.open(currentLogfilePath.c_str(), FILE_WRITE);
 
-    logFile.print(timeinfo, "%H:%M:%S, ");
-    logFile.printf("%d, %.1f, %.1f", loggingTag, thermometerData->temperature, thermometerData->humidity);
-
-    for (int i = 0; i < MAX_NUM_SENSORS; i++)
-        if (dataValid(dataTimestamps[i]))
-            logFile.printf(", %d, %.1f, %.1f", i, sensorNetworkData[i].pm2_5, sensorNetworkData[i].pm10);
-
-    if (dataValid(remoteWindSensorTimestamp))
-        logFile.printf(", W, %.2f, %d", remoteWindSensorData.windspeed, remoteWindSensorData.winddirection);
-
-    logFile.println();
+    logFile.println(str);
 
     logFile.close();
 

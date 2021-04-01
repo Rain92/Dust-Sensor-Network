@@ -1,3 +1,4 @@
+#pragma once
 
 #include <ESPmDNS.h>
 #include <SdCard.h>
@@ -5,12 +6,10 @@
 #include <vector>
 #include "datastore.h"
 
-#define DBG_OUTPUT_PORT Serial
-
 WebServer server(80);
 
 File fsUploadFile;
-const char *host = "esp32fs";
+const char *host = "dust-sensor-network";
 
 void (*toggleCallback)(bool) = nullptr;
 bool (*statusCallback)() = nullptr;
@@ -95,7 +94,7 @@ String getContentType(const String &filename)
 
 bool handleFileRead(const String &path)
 {
-    DBG_OUTPUT_PORT.println("handleFileRead: " + path);
+    Serial.println("handleFileRead: " + path);
     String contentType = getContentType(path);
 
     auto file = SD.open(path.c_str(), FILE_READ);
@@ -138,8 +137,8 @@ void handleFileUpload()
         {
             filename = "/" + filename;
         }
-        DBG_OUTPUT_PORT.print("handleFileUpload Name: ");
-        DBG_OUTPUT_PORT.println(filename);
+        Serial.print("handleFileUpload Name: ");
+        Serial.println(filename);
         fsUploadFile = SD.open(filename.c_str(), FILE_WRITE);
         filename = String();
     }
@@ -156,8 +155,8 @@ void handleFileUpload()
         {
             fsUploadFile.close();
         }
-        DBG_OUTPUT_PORT.print("handleFileUpload Size: ");
-        DBG_OUTPUT_PORT.println(upload.totalSize);
+        Serial.print("handleFileUpload Size: ");
+        Serial.println(upload.totalSize);
     }
 }
 
@@ -168,7 +167,7 @@ void handleFileDelete()
         return server.send(500, "text/plain", "BAD ARGS");
     }
     String path = server.arg(0);
-    DBG_OUTPUT_PORT.println("handleFileDelete: " + path);
+    Serial.println("handleFileDelete: " + path);
     if (path == "/")
     {
         return server.send(500, "text/plain", "BAD PATH");
@@ -189,7 +188,7 @@ void handleFileCreate()
         return server.send(500, "text/plain", "BAD ARGS");
     }
     String path = server.arg(0);
-    DBG_OUTPUT_PORT.println("handleFileCreate: " + path);
+    Serial.println("handleFileCreate: " + path);
     if (path == "/")
     {
         return server.send(500, "text/plain", "BAD PATH");
@@ -220,7 +219,7 @@ void handleFileGet()
     }
 
     String path = server.arg("file");
-    DBG_OUTPUT_PORT.println("handleFileGet: " + path);
+    Serial.println("handleFileGet: " + path);
 
     if (!handleFileRead(path))
     {
@@ -265,7 +264,7 @@ void handleFileList(String path)
 {
     auto start = millis();
 
-    DBG_OUTPUT_PORT.println("handleFileList: " + path);
+    Serial.println("handleFileList: " + path);
 
     auto root = SD.open(path.c_str());
     if (!root.isDirectory())
@@ -331,7 +330,7 @@ void handleFileList(String path)
 
     root.close();
 
-    DBG_OUTPUT_PORT.printf("handleFileList took: %lums\n", millis() - start);
+    Serial.printf("handleFileList took: %lums\n", millis() - start);
 
     server.send(200, "text/html", output);
 }
@@ -400,9 +399,9 @@ void handleSendData()
 void initWebServer()
 {
     MDNS.begin(host);
-    DBG_OUTPUT_PORT.print("Open http://");
-    DBG_OUTPUT_PORT.print(host);
-    DBG_OUTPUT_PORT.println(".local");
+    Serial.print("Open http://");
+    Serial.print(host);
+    Serial.println(".local");
 
     // SERVER INIT
     // list directory
@@ -410,18 +409,24 @@ void initWebServer()
 
     // create file
     server.on("/edit", HTTP_PUT, handleFileCreate);
+
     // delete file
     server.on("/edit", HTTP_DELETE, handleFileDelete);
-    // first callback is called after the request has ended with all parsed arguments
-    // second callback handles file uploads at that location
+
+    // unused
     server.on(
         "/edit", HTTP_POST, []() { server.send(200, "text/plain", ""); }, handleFileUpload);
 
     server.on("/get", HTTP_GET, handleFileGet);
 
+
+    // send sensordata via http, unused
     server.on("/senddata", HTTP_GET, handleSendData);
 
+    // start measuring and logging
     server.on("/start", HTTP_GET, []() { handleToggle(true); });
+    
+    // stop measuring and logging
     server.on("/stop", HTTP_GET, []() { handleToggle(false); });
 
     // called when the url is not defined here
@@ -433,7 +438,7 @@ void initWebServer()
         }
     });
 
-    // get heap status, analog input value and all GPIO statuses in one json call
+    // get heap status
     server.on("/mem", HTTP_GET, []() {
         String json = "{";
         json += "\"heap\":" + String(ESP.getFreeHeap());
@@ -442,7 +447,7 @@ void initWebServer()
         json = String();
     });
     server.begin();
-    DBG_OUTPUT_PORT.println("HTTP server started");
+    Serial.println("HTTP server started");
 }
 
 void handleRequests()

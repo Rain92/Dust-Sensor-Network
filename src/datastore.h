@@ -3,7 +3,7 @@
 #include "dustsensor.h"
 #include "windsensor.h"
 
-#define MAX_NUM_SENSORS 16
+#define MAX_NUM_SENSORS 32
 #define DATA_LIFETIME 1000  // 1 sec
 
 DustSensorData sensorNetworkData[MAX_NUM_SENSORS];
@@ -21,17 +21,17 @@ void initRemoteSensorData()
     remoteWindSensorTimestamp = 0;
 }
 
-void registerDustSensorData(uint8_t sensor, const DustSensorData &data)
+void registerDustSensorData(uint8_t sensorId, const DustSensorData &data)
 {
-    if (sensor >= MAX_NUM_SENSORS)
+    if (sensorId >= MAX_NUM_SENSORS)
         return;
 
-    dataTimestamps[sensor] = millis();
+    dataTimestamps[sensorId] = millis();
 
-    sensorNetworkData[sensor] = data;
+    sensorNetworkData[sensorId] = data;
 }
 
-void registerWindSensorData(uint8_t sensor, const WindSensorData &data)
+void registerWindSensorData(uint8_t sensorId, const WindSensorData &data)
 {
     remoteWindSensorTimestamp = millis();
 
