@@ -1,5 +1,8 @@
 #pragma once
 
+// don't commit sensitive information!
+
+// list of known networks
 const char *KNOWN_SSID[] = {"Andreas-PC_AP"};
 const char *KNOWN_PASSWORD[] = {"12345678"};
 
