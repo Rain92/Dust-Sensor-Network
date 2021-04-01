@@ -8,10 +8,15 @@ uploadcmd = piodir + "pio run -e OTA -t upload --upload-port {}"
 # IP adresses of the sensors to update
 sensor_ip_base = "192.168.43."
 sensor_ip_suffixes = [137, 167, 192, 91,
-                      27, 70, 219, 149,
-                      140, ]
+                      27,  149, 140, 219,
+                      70, 12, 49, 124,
+                      11, 174, 31, 197,
+                      233]  # Windsensor
 
-sensor_ips = list(map(lambda s: sensor_ip_base + str(s), sensor_ip_suffixes))
+# sensors to actually update over the air
+sensors_to_update = range(len(sensor_ip_suffixes))  # all
+
+#sensors_to_update = range(0, 8)
 
 
 def execute(cmd):
@@ -23,11 +28,13 @@ def execute(cmd):
     return popen.returncode
 
 
-for ip in sensor_ips:
+for i in sensors_to_update:
+    ip = sensor_ip_base + str(sensor_ip_suffixes[i])
     cmd = uploadcmd.format(ip)
     print("Executing:", cmd)
 
     ret = execute(cmd)
     print("Return code:", ret)
     if ret != 0:
+        print(F"Failed to update Sensor {i} with IP {ip}")
         break
