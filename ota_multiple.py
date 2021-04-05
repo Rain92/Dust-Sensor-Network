@@ -5,7 +5,7 @@ home = expanduser("~")
 piodir = join(home, ".platformio/penv/Scripts/")
 uploadcmd = piodir + "pio run -e OTA -t upload --upload-port {}"
 
-# IP adresses of the sensors to update
+# IP adresses of the sensors
 sensor_ip_base = "192.168.43."
 sensor_ip_suffixes = [137, 167, 192, 91,
                       27,  149, 140, 219,
@@ -15,8 +15,7 @@ sensor_ip_suffixes = [137, 167, 192, 91,
 
 # sensors to actually update over the air
 sensors_to_update = range(len(sensor_ip_suffixes))  # all
-
-#sensors_to_update = range(0, 8)
+# sensors_to_update = range(0, 8) # first 8
 
 
 def execute(cmd):

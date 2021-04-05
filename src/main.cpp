@@ -100,7 +100,9 @@ void setup()
 
     pinMode(PIN_LED, OUTPUT);
     digitalWrite(PIN_LED, LOW);
-    initBattery();
+
+    if (USE_BATTERY)
+        initBattery();
 
     initNvs();
 
@@ -181,10 +183,12 @@ void masterLoop()
 
     displayTemp();
 
-    // display.printf("touch value: %d\n", latestTouchValue);
-
-    // if (processTouchPin())
-    //     toggleSensorRunning();
+    if (USE_TOUCH_CONTROL)
+    {
+        display.printf("touch value: %d\n", latestTouchValue);
+        if (processTouchPin())
+            toggleSensorRunning(!nodeRunnig);
+    }
 
     if (nodeRunnig)
     {
@@ -265,7 +269,9 @@ void loop()
     else
         servantLoop();
 
-    // display.printf("Battery voltage: %.1fv\n", readBatteryVoltage());
+    if (USE_BATTERY)
+        display.printf("Battery voltage: %.1fv\n", readBatteryVoltage());
+
     display.printf("Cycle time: %lu", cycleTime);
 
     display.display();
